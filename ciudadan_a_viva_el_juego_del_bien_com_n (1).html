@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ciudadanía Viva: El Juego del Bien Común</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Styles & Scrollbars */
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(34, 197, 94, 0.4);
+            border-radius: 4px;
+        }
+        .game-canvas {
+            touch-action: none;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.03); }
+        }
+        .animate-glow {
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100 min-h-screen flex flex-col justify-between selection:bg-green-500 selection:text-white">
+
+    <!-- OVERLAY / MODALS CONTAINER -->
+    <div id="modalContainer" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <!-- Dynamic modal injected via JS -->
+        <div id="modalContent" class="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 dark:border-gray-700 relative transform transition-all scale-100">
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div id="app" class="flex flex-col min-h-screen">
+
+        <!-- HEADER & TOP BAR -->
+        <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                
+                <!-- Logo & Title -->
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('main-dashboard')">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-green-600 to-emerald-400 flex items-center justify-center text-white text-xl font-bold shadow-md shadow-green-500/20">
+                        <i class="fa-solid fa-tree-city"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
+                            Ciudadanía Viva 
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 font-semibold border border-green-300 dark:border-green-700">v2.5</span>
+                        </h1>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">El Juego Participativo del Bien Común</p>
+                    </div>
+                </div>
+
+                <!-- Game Stats & User Header -->
+                <div id="headerStats" class="flex items-center space-x-2 sm:space-x-4">
+                    <!-- Stat 1: Currency (Latas Rotas) -->
+                    <div class="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-full text-xs sm:text-sm font-bold text-amber-700 dark:text-amber-400" title="Latas Rotas (Moneda de Reciclaje)">
+                        <i class="fa-solid fa-dumpster-fire text-amber-500"></i>
+                        <span id="statLatas">0</span>
+                    </div>
+
+                    <!-- Stat 2: Crowns / Wins -->
+                    <div class="flex items-center gap-1.5 bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-800 px-3 py-1.5 rounded-full text-xs sm:text-sm font-bold text-yellow-700 dark:text-yellow-400" title="Coronas / Victorias Totales">
+                        <i class="fa-solid fa-crown text-yellow-500"></i>
+                        <span id="statCoronas">0</span>
+                    </div>
+
+                    <!-- Stat 3: Level & XP Bar -->
+                    <div class="hidden md:flex flex-col w-32 cursor-pointer" onclick="switchTab('journey')" title="Click para ver la Ruta de Progresión de Niveles">
+                        <div class="flex justify-between text-xs font-semibold mb-1">
+                            <span class="text-green-600 dark:text-green-400">Nivel <span id="statLevel">1</span></span>
+                            <span class="text-gray-400 text-[10px]"><span id="statXp">0</span>/<span id="statXpMax">100</span> XP</span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                            <div id="statXpBar" class="bg-gradient-to-r from-green-500 to-emerald-400 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Theme Toggle Button -->
+                    <button id="themeToggleBtn" onclick="toggleDarkMode()" class="p-2 rounded-xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white bg-gray-100 dark:bg-gray-700 transition" title="Cambiar Tema Claro/Oscuro">
+                        <i id="themeIcon" class="fa-solid fa-moon"></i>
+                    </button>
+
+                    <!-- User Account / Logout -->
+                    <div id="userMenuArea" class="flex items-center gap-2 border-l border-gray-200 dark:border-gray-700 pl-3">
+                        <button onclick="openAuthModal()" id="loginBtnNav" class="px-3 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition shadow-sm">
+                            <i class="fa-solid fa-right-to-bracket mr-1"></i> Entrar
+                        </button>
+                        <div id="userInfoNav" class="hidden flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-xs uppercase" id="avatarLetter">U</div>
+                            <button onclick="logout()" class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition text-xs" title="Cerrar Sesión">
+                                <i class="fa-solid fa-power-off"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- NAVIGATION TABS BAR -->
+        <nav class="bg-white dark:bg-gray-800/80 backdrop-blur border-b border-gray-200 dark:border-gray-700 sticky top-16 z-30 overflow-x-auto custom-scrollbar">
+            <div class="max-w-7xl mx-auto px-4 flex space-x-1 sm:space-x-4">
+                <button onclick="switchTab('main-dashboard')" id="tab-main-dashboard" class="tab-btn px-4 py-3 text-sm font-semibold border-b-2 border-green-600 text-green-600 dark:text-green-400 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-house"></i> Inicio / Propósito
+                </button>
+                <button onclick="switchTab('cap1-participacion')" id="tab-cap1-participacion" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-people-group"></i> Cap 1: Participación & Derechos
+                </button>
+                <button onclick="switchTab('cap2-residuos')" id="tab-cap2-residuos" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-recycle"></i> Cap 2: Minijuegos de Residuos
+                </button>
+                <button onclick="switchTab('cap3-profesional')" id="tab-cap3-profesional" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-file-contract"></i> Cap 3: Modo Profesional
+                </button>
+                <button onclick="switchTab('journey')" id="tab-journey" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-route"></i> Journey (100 Niveles)
+                </button>
+                <button onclick="switchTab('directorio')" id="tab-directorio" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-phone-volume"></i> Directorio Oficial
+                </button>
+            </div>
+        </nav>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+            <!-- ================= TAB: MAIN DASHBOARD & PURPOSE ================= -->
+            <section id="sec-main-dashboard" class="tab-content block space-y-6">
+                <!-- Hero Welcome Card -->
+                <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-green-700 via-emerald-600 to-teal-800 text-white p-6 sm:p-10 shadow-2xl">
+                    <div class="relative z-10 max-w-2xl">
+                        <span class="inline-block px-3 py-1 rounded-full bg-white/20 text-xs uppercase tracking-wider font-semibold mb-3 backdrop-blur-sm">Capítulo 1, 2 & 3 Activados</span>
+                        <h2 class="text-3xl sm:text-4xl font-extrabold leading-tight mb-4">Aprende, Participa y Transforma tu Comunidad</h2>
+                        <p class="text-green-100 text-sm sm:text-base mb-6 leading-relaxed">
+                            "Ciudadanía Viva" es una plataforma gamificada donde resolverás asuntos públicos, defenderás derechos fundamentales, combatirás la contaminación con minijuegos y generarás documentos legales reales para tu municipio.
+                        </p>
+                        <div class="flex flex-wrap gap-3">
+                            <button onclick="switchTab('cap1-participacion')" class="px-6 py-3 rounded-xl bg-white text-green-800 font-bold hover:bg-green-50 transition shadow-lg flex items-center gap-2">
+                                <i class="fa-solid fa-play"></i> Comenzar Capítulo 1
+                            </button>
+                            <button onclick="switchTab('cap2-residuos')" class="px-6 py-3 rounded-xl bg-green-900/50 hover:bg-green-900/80 text-white font-semibold border border-white/30 backdrop-blur transition flex items-center gap-2">
+                                <i class="fa-solid fa-gamepad"></i> Ir a Minijuegos de Basura
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Background Decorative Icon -->
+                    <i class="fa-solid fa-city absolute -right-6 -bottom-10 text-9xl text-white/10 pointer-events-none select-none"></i>
+                </div>
+
+                <!-- Purpose & Mechanics Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Propósito del Juego -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition">
+                        <div class="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl font-bold mb-4">
+                            <i class="fa-solid fa-bullseye"></i>
+                        </div>
+                        <h3 class="text-lg font-bold mb-2">Propósito Educativo</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                            Capacitar al ciudadano moderno en la gestión de residuos sólidos, vigilancia ciudadana, mecanismos de democracia participativa y derivación correcta de denuncias ante la fiscalía e instituciones.
+                        </p>
+                    </div>
+
+                    <!-- Economía de Latas Rotas -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition">
+                        <div class="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl font-bold mb-4">
+                            <i class="fa-solid fa-dumpster-fire"></i>
+                        </div>
+                        <h3 class="text-lg font-bold mb-2">Moneda: Latas Rotas</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                            Recoge y recicla latas rotas jugando minijuegos o completando retos ciudadanos. Usa tus latas para desbloquear medallas, herramientas profesionales y subir en el Journey de 100 niveles.
+                        </p>
+                    </div>
+
+                    <!-- Modo Profesional & Documentos -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition">
+                        <div class="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl font-bold mb-4">
+                            <i class="fa-solid fa-file-signature"></i>
+                        </div>
+                        <h3 class="text-lg font-bold mb-2">Módulo Profesional</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                            Transforma el aprendizaje digital en acción real. Genera solicitudes formales, cartas de reclamo y denuncias de amparo ambiental listas para presentar ante tu Municipalidad o Fiscalía.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Rapid Access Cards -->
+                <div class="bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="text-3xl text-yellow-400">
+                            <i class="fa-solid fa-crown"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-lg">Tu Progreso de Guardado</h4>
+                            <p class="text-xs text-gray-400">Inicia sesión con tu cuenta para guardar tus victorias, coronas, nivel e historial de trámites generados.</p>
+                        </div>
+                    </div>
+                    <button onclick="openAuthModal()" class="px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold text-sm transition shadow-md whitespace-nowrap">
+                        <i class="fa-solid fa-user-gear mr-2"></i> Abrir / Gestionar Cuenta
+                    </button>
+                </div>
+            </section>
+
+
+            <!-- ================= CAPÍTULO 1: PARTICIPACIÓN & DERECHOS ================= -->
+            <section id="sec-cap1-participacion" class="tab-content hidden space-y-6">
+                <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                    <h2 class="text-2xl font-bold flex items-center gap-2">
+                        <span class="bg-green-600 text-white text-xs px-2.5 py-1 rounded-lg">Capítulo 1</span>
+                        Participación Ciudadana y Protección de Derechos
+                    </h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Aprende a responder adecuadamente ante problemas de la comunidad y vulneraciones de derechos.</p>
+                </div>
+
+                <!-- Sub-Mecánica 1: Asuntos Públicos & Decisiones Comunitarias -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
+                        <h3 class="font-bold text-lg text-green-700 dark:text-green-400 flex items-center gap-2">
+                            <i class="fa-solid fa-vote-yea"></i> Mecánica 1: Simulador de Decisiones Comunitarias
+                        </h3>
+                        <span class="text-xs font-semibold px-3 py-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded-full">+50 Latas por resolución</span>
+                    </div>
+
+                    <div id="decisionCard" class="space-y-4">
+                        <!-- Loaded dynamically via JS -->
+                    </div>
+                </div>
+
+                <!-- Sub-Mecánica 2: Trivias de Organismos de Protección de Derechos -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
+                        <h3 class="font-bold text-lg text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                            <i class="fa-solid fa-building-shield"></i> Mecánica 2: Organismos de Proteccion de Derechos
+                        </h3>
+                        <span class="text-xs font-semibold px-3 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full">+100 XP por acertar</span>
+                    </div>
+
+                    <p class="text-sm text-gray-600 dark:text-gray-300">
+                        Lee la situación vulnerable planteada y selecciona la institución pública correcta encargada de velar por los derechos del afectado.
+                    </p>
+
+                    <div id="quizEntityCard" class="space-y-4">
+                        <!-- Loaded dynamically via JS -->
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ================= CAPÍTULO 2: MINIJUEGOS DE RESIDUOS ================= -->
+            <section id="sec-cap2-residuos" class="tab-content hidden space-y-6">
+                <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                    <h2 class="text-2xl font-bold flex items-center gap-2">
+                        <span class="bg-amber-600 text-white text-xs px-2.5 py-1 rounded-lg">Capítulo 2</span>
+                        Minijuegos: Manejo de Residuos y Control de Basura
+                    </h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Acción interactiva en vivo para evitar la crisis ambiental en tu vecindario.</p>
+                </div>
+
+                <!-- MINIJUEGO 1: CLASIFICACIÓN DE RESIDUOS -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-700 pb-3">
+                        <div>
+                            <h3 class="font-bold text-lg text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                                <i class="fa-solid fa-recycle"></i> Minijuego 1: Separador Ecológico Veloz
+                            </h3>
+                            <p class="text-xs text-gray-500">Haz clic o toca el tacho correcto según el residuo mostrado.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm font-bold bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-lg">Puntos: <span id="m1Score">0</span></span>
+                            <span class="text-sm font-bold bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-300 px-3 py-1 rounded-lg">Tiempo: <span id="m1Time">30</span>s</span>
+                        </div>
+                    </div>
+
+                    <!-- Game Display Canvas Area -->
+                    <div id="m1GameArea" class="bg-gradient-to-b from-sky-50 to-emerald-50 dark:from-gray-900 dark:to-gray-800 rounded-xl p-8 text-center min-h-[260px] flex flex-col items-center justify-center relative overflow-hidden border border-dashed border-gray-300 dark:border-gray-600">
+                        <div id="m1StartPrompt" class="space-y-3">
+                            <div class="text-5xl text-amber-500 mb-2"><i class="fa-solid fa-trash-can-arrow-up"></i></div>
+                            <h4 class="font-bold text-lg">¿Listo para clasificar basura?</h4>
+                            <p class="text-xs text-gray-500 max-w-sm">Separa Plásticos, Orgánicos, Papel/Cartón y Residuos Peligrosos. ¡Evita acumular basura en las calles!</p>
+                            <button onclick="startMinigame1()" class="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition shadow-lg">
+                                <i class="fa-solid fa-play mr-2"></i> Iniciar Minijuego 1
+                            </button>
+                        </div>
+
+                        <div id="m1PlayArea" class="hidden w-full flex-col items-center space-y-6">
+                            <!-- Current Item To Classify -->
+                            <div class="bg-white dark:bg-gray-700 p-4 rounded-2xl shadow-xl border-2 border-amber-400 animate-bounce">
+                                <span id="m1ItemEmoji" class="text-6xl block">🍾</span>
+                                <span id="m1ItemName" class="text-sm font-bold mt-2 block text-gray-800 dark:text-white">Botella de Vidrio</span>
+                            </div>
+
+                            <!-- Bins Grid -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-xl">
+                                <button onclick="checkM1Choice('plastico')" class="bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-xl font-bold text-xs flex flex-col items-center gap-1 transition">
+                                    <i class="fa-solid fa-bottle-water text-xl"></i> PLÁSTICO
+                                </button>
+                                <button onclick="checkM1Choice('organico')" class="bg-amber-600 hover:bg-amber-700 text-white p-3 rounded-xl font-bold text-xs flex flex-col items-center gap-1 transition">
+                                    <i class="fa-solid fa-apple-whole text-xl"></i> ORGÁNICO
+                                </button>
+                                <button onclick="checkM1Choice('papel')" class="bg-gray-500 hover:bg-gray-600 text-white p-3 rounded-xl font-bold text-xs flex flex-col items-center gap-1 transition">
+                                    <i class="fa-solid fa-box text-xl"></i> PAPEL / CARTÓN
+                                </button>
+                                <button onclick="checkM1Choice('peligroso')" class="bg-red-500 hover:bg-red-600 text-white p-3 rounded-xl font-bold text-xs flex flex-col items-center gap-1 transition">
+                                    <i class="fa-solid fa-biohazard text-xl"></i> PELIGROSO
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MINIJUEGO 2: LIMPIEZA URBANA CONTRA LA CRISIS DE BASURA -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-700 pb-3">
+                        <div>
+                            <h3 class="font-bold text-lg text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                                <i class="fa-solid fa-hand-sparkles"></i> Minijuego 2: Limpieza Urbana en Vivo
+                            </h3>
+                            <p class="text-xs text-gray-500">Haz clic rápido en la basura dispersa para limpiar la ciudad antes de llegar al 100% de contaminación.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm font-bold text-gray-700 dark:text-gray-300">Nivel de Basura:</span>
+                            <div class="w-36 bg-gray-200 dark:bg-gray-700 rounded-full h-4 overflow-hidden border border-gray-300 dark:border-gray-600">
+                                <div id="m2Bar" class="bg-red-500 h-full transition-all duration-200" style="width: 20%"></div>
+                            </div>
+                            <span id="m2Percent" class="text-sm font-bold text-red-500">20%</span>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Cleaning Canvas Grid -->
+                    <div class="relative bg-gradient-to-b from-amber-100 to-amber-200 dark:from-gray-900 dark:to-gray-800 rounded-2xl p-4 min-h-[300px] flex items-center justify-center overflow-hidden">
+                        
+                        <div id="m2StartPrompt" class="text-center z-10 space-y-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur p-6 rounded-2xl border border-gray-200 dark:border-gray-700">
+                            <i class="fa-solid fa-city text-5xl text-emerald-500"></i>
+                            <h4 class="font-bold text-lg">¡La ciudad sufre acumulación de basura!</h4>
+                            <p class="text-xs text-gray-500 max-w-md">Limpia los focos de contaminación haciendo clic en las latas y bolsas. Si la barra llega al 100%, la ciudad entrará en crisis ambiental.</p>
+                            <button onclick="startMinigame2()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-lg">
+                                <i class="fa-solid fa-broom mr-2"></i> Iniciar Limpieza Urbana
+                            </button>
+                        </div>
+
+                        <div id="m2Board" class="hidden absolute inset-0 p-4">
+                            <!-- Spawned items go here via JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ================= CAPÍTULO 3: MODO PROFESIONAL & GENERADOR ================= -->
+            <section id="sec-cap3-profesional" class="tab-content hidden space-y-6">
+                <div class="border-b border-gray-200 dark:border-gray-700 pb-4 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold flex items-center gap-2">
+                            <span class="bg-purple-600 text-white text-xs px-2.5 py-1 rounded-lg">Capítulo 3</span>
+                            Modo Profesional: Mesa Ciudadana & Solución de Problemas
+                        </h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Generador de Documentos Oficiales, Reclamos Formales y Solicitudes Comunitarias.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Form Input Column -->
+                    <div class="lg:col-span-5 bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                        <h3 class="font-bold text-base text-purple-600 dark:text-purple-400 flex items-center gap-2">
+                            <i class="fa-solid fa-pen-to-square"></i> Datos del Documento
+                        </h3>
+
+                        <div class="space-y-3 text-xs">
+                            <div>
+                                <label class="block font-semibold mb-1">Tipo de Solicitud/Reclamo:</label>
+                                <select id="docType" class="w-full p-2.5 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-purple-500">
+                                    <option value="limpieza">Solicitud de Limpieza y Errradicación de Botadero de Basura</option>
+                                    <option value="derecho">Denuncia Ciudadana por Vulneración de Derechos Comunitarios</option>
+                                    <option value="mantenimiento">Petición de Mantenimiento de Parques y Alumbrado Público</option>
+                                    <option value="fiscalia">Oficio Preventivo por Acumulación Peligrosa de Residuos</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block font-semibold mb-1">Autoridad / Entidad Destinataria:</label>
+                                <input type="text" id="docEntity" placeholder="Ej: Alcaldía Municipal de San Martín / OEFA / Fiscalía" class="w-full p-2.5 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-purple-500">
+                            </div>
+
+                            <div>
+                                <label class="block font-semibold mb-1">Nombre Completo del Solicitante / Vecino:</label>
+                                <input type="text" id="docUser" placeholder="Ej: Juan Carlos Perez" class="w-full p-2.5 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-purple-500">
+                            </div>
+
+                            <div>
+                                <label class="block font-semibold mb-1">DNI / Documento de Identidad:</label>
+                                <input type="text" id="docDni" placeholder="Ej: 72819043" class="w-full p-2.5 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-purple-500">
+                            </div>
+
+                            <div>
+                                <label class="block font-semibold mb-1">Ubicación / Zona Afectada:</label>
+                                <input type="text" id="docAddress" placeholder="Ej: Av. Las Flores Cdra 4, Sector Los Olivos" class="w-full p-2.5 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-purple-500">
+                            </div>
+
+                            <div>
+                                <label class="block font-semibold mb-1">Descripción Detallada del Problema:</label>
+                                <textarea id="docDetails" rows="4" placeholder="Describe los hechos, días de acumulación de residuos o afectación a la salud..." class="w-full p-2.5 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-purple-500"></textarea>
+                            </div>
+
+                            <button onclick="generateDoc()" class="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Generar Expediente Formal
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Document Live Preview Column -->
+                    <div class="lg:col-span-7 bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between space-y-4">
+                        <div>
+                            <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3 mb-3">
+                                <h3 class="font-bold text-base text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                                    <i class="fa-solid fa-file-pdf text-red-500"></i> Vista Previa de Plantilla Oficial
+                                </h3>
+                                <button onclick="copyDocument()" class="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg font-semibold transition flex items-center gap-1">
+                                    <i class="fa-solid fa-copy"></i> Copiar Texto
+                                </button>
+                            </div>
+
+                            <!-- Formatted Printable Document Box -->
+                            <div id="docPreviewBox" class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6 rounded-xl font-mono text-xs leading-relaxed text-gray-800 dark:text-gray-200 whitespace-pre-wrap min-h-[350px] max-h-[500px] overflow-y-auto custom-scrollbar">
+SOLICITUD CIUDADANA - MESA DE PARTE
+-----------------------------------------------------------
+[Selecciona los datos del formulario a la izquierda y presiona 'Generar Expediente Formal' para armar tu plantilla oficial lista para enviar].
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-xl border border-purple-200 dark:border-purple-800/50 text-xs text-purple-700 dark:text-purple-300 flex items-center gap-3">
+                            <i class="fa-solid fa-award text-xl text-purple-500"></i>
+                            <span>Generar este documento otorga <strong>+1 Corona de Victoria</strong> y <strong>+150 XP</strong> a tu cuenta.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ================= TAB: JOURNEY DE 100 NIVELES ================= -->
+            <section id="sec-journey" class="tab-content hidden space-y-6">
+                <div class="border-b border-gray-200 dark:border-gray-700 pb-4 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-route text-green-500"></i> Ruta de Experiencia (100 Niveles)
+                        </h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Gana XP completando minijuegos y reclamos formales para desbloquear recompensas.</p>
+                    </div>
+                </div>
+
+                <!-- Level Rewards Grid -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-bold">Progreso Global de Niveles</span>
+                        <span class="text-xs font-semibold text-green-600 dark:text-green-400" id="journeyUserLevelText">Nivel Actual: 1 / 100</span>
+                    </div>
+
+                    <!-- Scrollable Grid of 100 Levels -->
+                    <div id="levelsGrid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-10 gap-3 max-h-[500px] overflow-y-auto p-2 custom-scrollbar">
+                        <!-- Loaded dynamically via JS -->
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ================= TAB: DIRECTORIO DE EMERGENCIAS E INSTITUCIONES ================= -->
+            <section id="sec-directorio" class="tab-content hidden space-y-6">
+                <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                    <h2 class="text-2xl font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-phone-volume text-blue-500"></i> Directorio Institucional de Atención
+                    </h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Canales oficiales, números de fiscalía, municipalidades y protección de derechos.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Card 1: Fiscalía -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                        <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400 flex items-center justify-center font-bold text-lg">
+                            <i class="fa-solid fa-scale-balanced"></i>
+                        </div>
+                        <h3 class="font-bold text-base">Fiscalía de la Nación / Delitos Ambientales</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Denuncias por delitos contra los recursos naturales, contaminación y acumulación ilegal de residuos.</p>
+                        <div class="text-xs font-mono font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-2.5 rounded-lg flex justify-between items-center">
+                            <span>Línea Gratuita: 0800-00004</span>
+                            <i class="fa-solid fa-phone"></i>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: Defensoría del Pueblo -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400 flex items-center justify-center font-bold text-lg">
+                            <i class="fa-solid fa-hands-holding-child"></i>
+                        </div>
+                        <h3 class="font-bold text-base">Defensoría del Pueblo</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Defensa de derechos constitucionales y supervisión de servicios públicos de agua y limpieza.</p>
+                        <div class="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 p-2.5 rounded-lg flex justify-between items-center">
+                            <span>Central: 0800-15170</span>
+                            <i class="fa-solid fa-phone"></i>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Municipalidad Serenazgo -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 flex items-center justify-center font-bold text-lg">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <h3 class="font-bold text-base">Municipalidades / Central de Serenazgo</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Atención de infracciones ambientales vecinales, ruidos molestos y fiscalización de residuos.</p>
+                        <div class="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-lg flex justify-between items-center">
+                            <span>Canal Comunitario: 105 / Central Local</span>
+                            <i class="fa-solid fa-phone"></i>
+                        </div>
+                    </div>
+
+                    <!-- Card 4: MINAM / OEFA -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                        <div class="w-10 h-10 rounded-xl bg-teal-100 text-teal-600 dark:bg-teal-950 dark:text-teal-400 flex items-center justify-center font-bold text-lg">
+                            <i class="fa-solid fa-leaf"></i>
+                        </div>
+                        <h3 class="font-bold text-base">OEFA - Evaluación y Fiscalización Ambiental</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Supervisión directa de botaderos de basura informal y contaminación industrial en entornos urbanos.</p>
+                        <div class="text-xs font-mono font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/40 p-2.5 rounded-lg flex justify-between items-center">
+                            <span>Portal Sinada: (01) 204-9900</span>
+                            <i class="fa-solid fa-phone"></i>
+                        </div>
+                    </div>
+
+                    <!-- Card 5: INDECOPI -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                        <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400 flex items-center justify-center font-bold text-lg">
+                            <i class="fa-solid fa-cart-flatbed-suitcases"></i>
+                        </div>
+                        <h3 class="font-bold text-base">INDECOPI - Protección al Consumidor</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Reclamos sobre servicios prestados por empresas públicas o privadas de recolección de basura.</p>
+                        <div class="text-xs font-mono font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 p-2.5 rounded-lg flex justify-between items-center">
+                            <span>Atención: 224-7777 / 0800-44040</span>
+                            <i class="fa-solid fa-phone"></i>
+                        </div>
+                    </div>
+
+                    <!-- Card 6: MIMP - Protección de Derechos Vulnerables -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                        <div class="w-10 h-10 rounded-xl bg-pink-100 text-pink-600 dark:bg-pink-950 dark:text-pink-400 flex items-center justify-center font-bold text-lg">
+                            <i class="fa-solid fa-heart-pulse"></i>
+                        </div>
+                        <h3 class="font-bold text-base">Línea 100 - Protección Social</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Atención de situaciones de riesgo o violencia en la familia e infancia comunitaria.</p>
+                        <div class="text-xs font-mono font-bold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/40 p-2.5 rounded-lg flex justify-between items-center">
+                            <span>Línea Gratuita: 100</span>
+                            <i class="fa-solid fa-phone"></i>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 mt-8">
+            <div class="max-w-7xl mx-auto px-4 text-center text-xs text-gray-500 dark:text-gray-400 flex flex-col sm:flex-row items-center justify-between gap-2">
+                <span>© 2026 Ciudadanía Viva: El Juego del Bien Común. Desarrollado para la participación activa.</span>
+                <div class="flex space-x-4">
+                    <a href="#" onclick="switchTab('main-dashboard')" class="hover:underline">Propósito</a>
+                    <a href="#" onclick="switchTab('cap3-profesional')" class="hover:underline">Mesa Ciudadana</a>
+                    <a href="#" onclick="switchTab('directorio')" class="hover:underline">Números Útiles</a>
+                </div>
+            </div>
+        </footer>
+
+    </div>
+
+
+    <!-- ================= JAVASCRIPT GAME LOGIC & SYSTEM ================= -->
+    <script>
+        /* -------------------------------------------------------------
+           1. GAME STATE & ACCOUNT SYSTEM (LocalStorage Persistence)
+        ------------------------------------------------------------- */
+        let currentUser = null;
+        let gameState = {
+            latas: 120,
+            coronas: 2,
+            level: 1,
+            xp: 30,
+            xpMax: 100,
+            decisionsSolved: 0,
+            quizzesSolved: 0,
+            documentsCreated: 0
+        };
+
+        // Initialize App on DOM Load
+        window.onload = function() {
+            loadSavedUser();
+            updateUIStats();
+            renderLevelGrid();
+            initCap1Content();
+        };
+
+        function saveState() {
+            if (currentUser) {
+                const accounts = JSON.parse(localStorage.getItem('cv_accounts') || '{}');
+                accounts[currentUser.username].state = gameState;
+                localStorage.setItem('cv_accounts', JSON.stringify(accounts));
+            } else {
+                localStorage.setItem('cv_guest_state', JSON.stringify(gameState));
+            }
+            updateUIStats();
+        }
+
+        function loadSavedUser() {
+            const activeUser = localStorage.getItem('cv_active_user');
+            if (activeUser) {
+                const accounts = JSON.parse(localStorage.getItem('cv_accounts') || '{}');
+                if (accounts[activeUser]) {
+                    currentUser = { username: activeUser };
+                    gameState = accounts[activeUser].state || gameState;
+                    document.getElementById('loginBtnNav').classList.add('hidden');
+                    document.getElementById('userInfoNav').classList.remove('hidden');
+                    document.getElementById('avatarLetter').innerText = activeUser.charAt(0).toUpperCase();
+                }
+            } else {
+                const guest = localStorage.getItem('cv_guest_state');
+                if (guest) {
+                    gameState = JSON.parse(guest);
+                }
+            }
+        }
+
+        function addXP(amount) {
+            gameState.xp += amount;
+            while (gameState.xp >= gameState.xpMax) {
+                gameState.xp -= gameState.xpMax;
+                if (gameState.level < 100) {
+                    gameState.level++;
+                    gameState.latas += 50; // Level up bonus latas
+                    showNotification(`🎉 ¡SUBISTE AL NIVEL ${gameState.level}! Recompensa: +50 Latas Rotas`);
+                }
+            }
+            saveState();
+        }
+
+        function addLatas(amount) {
+            gameState.latas += amount;
+            saveState();
+        }
+
+        function addCrown() {
+            gameState.coronas++;
+            saveState();
+        }
+
+        function updateUIStats() {
+            document.getElementById('statLatas').innerText = gameState.latas;
+            document.getElementById('statCoronas').innerText = gameState.coronas;
+            document.getElementById('statLevel').innerText = gameState.level;
+            document.getElementById('statXp').innerText = gameState.xp;
+            document.getElementById('statXpMax').innerText = gameState.xpMax;
+
+            const percent = Math.min(100, Math.floor((gameState.xp / gameState.xpMax) * 100));
+            document.getElementById('statXpBar').style.width = percent + '%';
+            
+            const journeyText = document.getElementById('journeyUserLevelText');
+            if(journeyText) journeyText.innerText = `Nivel Actual: ${gameState.level} / 100`;
+
+            renderLevelGrid();
+        }
+
+        /* -------------------------------------------------------------
+           2. THEME SWITCHER (Light / Dark Mode)
+        ------------------------------------------------------------- */
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.className = 'fa-solid fa-moon';
+                localStorage.setItem('cv_theme', 'light');
+            } else {
+                html.classList.add('dark');
+                icon.className = 'fa-solid fa-sun text-yellow-400';
+                localStorage.setItem('cv_theme', 'dark');
+            }
+        }
+
+        // Apply saved theme preference on load
+        if (localStorage.getItem('cv_theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+            setTimeout(() => {
+                const icon = document.getElementById('themeIcon');
+                if (icon) icon.className = 'fa-solid fa-sun text-yellow-400';
+            }, 100);
+        }
+
+        /* -------------------------------------------------------------
+           3. NAVIGATION BETWEEN TABS
+        ------------------------------------------------------------- */
+        function switchTab(tabId) {
+            const tabs = ['main-dashboard', 'cap1-participacion', 'cap2-residuos', 'cap3-profesional', 'journey', 'directorio'];
+            
+            tabs.forEach(id => {
+                const sec = document.getElementById('sec-' + id);
+                const btn = document.getElementById('tab-' + id);
+                if (sec) sec.classList.add('hidden');
+                if (btn) {
+                    btn.classList.remove('border-green-600', 'text-green-600', 'dark:text-green-400');
+                    btn.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+                }
+            });
+
+            const activeSec = document.getElementById('sec-' + tabId);
+            const activeBtn = document.getElementById('tab-' + tabId);
+
+            if (activeSec) activeSec.classList.remove('hidden');
+            if (activeBtn) {
+                activeBtn.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+                activeBtn.classList.add('border-green-600', 'text-green-600', 'dark:text-green-400');
+            }
+        }
+
+        /* -------------------------------------------------------------
+           4. AUTH / LOGIN SYSTEM (MODAL & LOCALSTORAGE)
+        ------------------------------------------------------------- */
+        function openAuthModal() {
+            const modal = document.getElementById('modalContainer');
+            const content = document.getElementById('modalContent');
+            
+            content.innerHTML = `
+                <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+                <div class="text-center mb-6">
+                    <div class="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold mb-2">
+                        <i class="fa-solid fa-user-lock"></i>
+                    </div>
+                    <h3 class="text-xl font-bold">Cuenta de Ciudadano</h3>
+                    <p class="text-xs text-gray-500">Inicia sesión o regístrate para guardar tus avances.</p>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <label class="block font-semibold mb-1">Usuario:</label>
+                        <input type="text" id="authUsername" placeholder="Ej: maria_vecina" class="w-full p-2.5 rounded-xl border dark:bg-gray-700 dark:border-gray-600">
+                    </div>
+                    <div>
+                        <label class="block font-semibold mb-1">Contraseña:</label>
+                        <input type="password" id="authPassword" placeholder="••••••••" class="w-full p-2.5 rounded-xl border dark:bg-gray-700 dark:border-gray-600">
+                    </div>
+                    <div class="flex gap-2 pt-2">
+                        <button onclick="handleLogin()" class="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition">
+                            Inicia Sesión
+                        </button>
+                        <button onclick="handleRegister()" class="flex-1 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 font-bold rounded-xl transition">
+                            Crear Cuenta
+                        </button>
+                    </div>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modalContainer').classList.add('hidden');
+        }
+
+        function handleRegister() {
+            const user = document.getElementById('authUsername').value.trim();
+            const pass = document.getElementById('authPassword').value.trim();
+            if (!user || !pass) {
+                alert('Por favor completa todos los campos');
+                return;
+            }
+
+            const accounts = JSON.parse(localStorage.getItem('cv_accounts') || '{}');
+            if (accounts[user]) {
+                alert('Ese nombre de usuario ya existe.');
+                return;
+            }
+
+            accounts[user] = { password: pass, state: gameState };
+            localStorage.setItem('cv_accounts', JSON.stringify(accounts));
+            localStorage.setItem('cv_active_user', user);
+            currentUser = { username: user };
+
+            closeModal();
+            loadSavedUser();
+            showNotification('✅ Cuenta creada con éxito. Tus datos se guardarán aquí.');
+        }
+
+        function handleLogin() {
+            const user = document.getElementById('authUsername').value.trim();
+            const pass = document.getElementById('authPassword').value.trim();
+
+            const accounts = JSON.parse(localStorage.getItem('cv_accounts') || '{}');
+            if (accounts[user] && accounts[user].password === pass) {
+                localStorage.setItem('cv_active_user', user);
+                currentUser = { username: user };
+                gameState = accounts[user].state || gameState;
+                closeModal();
+                loadSavedUser();
+                updateUIStats();
+                showNotification(`👋 ¡Bienvenido de nuevo, ${user}!`);
+            } else {
+                alert('Usuario o contraseña incorrectos.');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('cv_active_user');
+            currentUser = null;
+            document.getElementById('loginBtnNav').classList.remove('hidden');
+            document.getElementById('userInfoNav').classList.add('hidden');
+            showNotification('Sesión cerrada. Jugando en modo invitado.');
+        }
+
+        function showNotification(msg) {
+            const modal = document.getElementById('modalContainer');
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <div class="text-center p-4 space-y-4">
+                    <div class="text-3xl text-green-500"><i class="fa-solid fa-circle-check"></i></div>
+                    <p class="font-bold text-sm text-gray-800 dark:text-gray-100">${msg}</p>
+                    <button onclick="closeModal()" class="px-6 py-2 bg-green-600 text-white font-bold rounded-xl text-xs">Entendido</button>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+
+        /* -------------------------------------------------------------
+           5. CAPÍTULO 1 LOGIC: DECISIONES & TRIVIAS DE DERECHOS
+        ------------------------------------------------------------- */
+        const decisionScenarios = [
+            {
+                title: "Propuesta de Remodelación del Parque Comunitario",
+                desc: "Se ha aprobado un presupuesto participativo en el municipio. ¿Cómo intervienes como ciudadano activo?",
+                opts: [
+                    { text: "Organizar una asamblea comunitaria y someter a votación pública las prioridades (juegos, tachos de reciclaje, áreas verdes).", correct: true, feedback: "¡Correcto! Promueves la participación directa y el bien común." },
+                    { text: "Esperar a que la municipalidad decida todo sin consultar a los vecinos.", correct: false, feedback: "La abstención ciudadana perjudica el interés común." }
+                ]
+            },
+            {
+                title: "Botadero de Basura Informal cerca a un Colegio",
+                desc: "Varias personas acumulan basura en la esquina de la escuela primaria local.",
+                opts: [
+                    { text: "Ignorarlo porque no queda exactamente frente a tu casa.", correct: false, feedback: "El desinterés degrada la salud ambiental pública." },
+                    { text: "Efectuar un reporte formal con la junta vecinal y solicitar intervención fiscal ambiental.", correct: true, feedback: "¡Excelente! Defiendes el entorno y la salud pública." }
+                ]
+            }
+        ];
+
+        const quizEntities = [
+            {
+                caseText: "Un vecino ha cerrado arbitrariamente el parque comunitario con un muro privado sin autorización municipal.",
+                options: ["Defensoría del Pueblo", "Municipalidad / Fiscalización", "INDECOPI", "MIMP"],
+                answer: 1,
+                explanation: "La Municipalidad y sus inspectores de fiscalización velan por el uso público e intangible de los parques y vías."
+            },
+            {
+                caseText: "Una empresa proveedora interrumpe cobrando recibos excesivos sin prestar el servicio de recolección de residuos.",
+                options: ["Fiscalía de la Nación", "INDECOPI / Organismos Reguladores", "Policía Nacional", "Poder Judicial"],
+                answer: 1,
+                explanation: "INDECOPI protege los derechos de los usuarios y consumidores ante cobros e incumplimientos de servicios."
+            }
+        ];
+
+        let currentDecisionIndex = 0;
+        let currentQuizIndex = 0;
+
+        function initCap1Content() {
+            renderDecisionCard();
+            renderQuizCard();
+        }
+
+        function renderDecisionCard() {
+            const container = document.getElementById('decisionCard');
+            const sc = decisionScenarios[currentDecisionIndex];
+            if (!sc) {
+                container.innerHTML = `<p class="text-xs text-green-600 font-bold">¡Has completado todas las situaciones del Capítulo 1!</p>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="bg-gray-50 dark:bg-gray-900/60 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <h4 class="font-bold text-sm mb-1 text-gray-800 dark:text-gray-100">${sc.title}</h4>
+                    <p class="text-xs text-gray-600 dark:text-gray-300 mb-4">${sc.desc}</p>
+                    <div class="space-y-2">
+                        ${sc.opts.map((opt, idx) => `
+                            <button onclick="submitDecision(${idx})" class="w-full text-left p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-950/30 transition text-xs font-semibold flex items-center justify-between">
+                                <span>${opt.text}</span>
+                                <i class="fa-solid fa-chevron-right text-gray-400"></i>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function submitDecision(optIdx) {
+            const sc = decisionScenarios[currentDecisionIndex];
+            const opt = sc.opts[optIdx];
+            if (opt.correct) {
+                addLatas(50);
+                addXP(50);
+                showNotification(`✨ ${opt.feedback}\nGanaste +50 Latas Rotas y +50 XP.`);
+                currentDecisionIndex = (currentDecisionIndex + 1) % decisionScenarios.length;
+                renderDecisionCard();
+            } else {
+                showNotification(`⚠️ ${opt.feedback}\nInténtalo de nuevo eligiendo el bien común.`);
+            }
+        }
+
+        function renderQuizCard() {
+            const container = document.getElementById('quizEntityCard');
+            const q = quizEntities[currentQuizIndex];
+            if (!q) return;
+
+            container.innerHTML = `
+                <div class="bg-blue-50/50 dark:bg-blue-950/20 p-4 rounded-xl border border-blue-200 dark:border-blue-900/50">
+                    <p class="text-xs font-bold text-blue-800 dark:text-blue-300 mb-3">Caso Practico: "${q.caseText}"</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        ${q.options.map((opt, idx) => `
+                            <button onclick="submitQuiz(${idx})" class="p-2.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-500 font-semibold text-xs text-center transition">
+                                ${opt}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function submitQuiz(optIdx) {
+            const q = quizEntities[currentQuizIndex];
+            if (optIdx === q.answer) {
+                addLatas(60);
+                addXP(100);
+                showNotification(`🎯 ¡Acertaste!\nExplicación: ${q.explanation}\n Recompensa: +60 Latas Rotas y +100 XP.`);
+                currentQuizIndex = (currentQuizIndex + 1) % quizEntities.length;
+                renderQuizCard();
+            } else {
+                showNotification(`❌ Institución incorrecta. Evalúa qué entidad regula este caso específico e inténtalo otra vez.`);
+            }
+        }
+
+
+        /* -------------------------------------------------------------
+           6. CAPÍTULO 2 LOGIC: MINIJUEGOS DE RESIDUOS
+        ------------------------------------------------------------- */
+        // MINIJUEGO 1: SEPARADOR ECOLÓGICO
+        const m1Items = [
+            { name: "Botella de Plástico PET", category: "plastico", emoji: "🍾" },
+            { name: "Cáscara de Plátano / Manzana", category: "organico", emoji: "🍌" },
+            { name: "Caja de Cartón para Envíos", category: "papel", emoji: "📦" },
+            { name: "Pila de Litio Usada", category: "peligroso", emoji: "🔋" },
+            { name: "Periódico Viejo", category: "papel", emoji: "📰" },
+            { name: "Restos de Comida Vegetal", category: "organico", emoji: "🥬" },
+            { name: "Envase de Detergente Plástico", category: "plastico", emoji: "🧴" },
+            { name: "Frasco de Medicamento Vencido", category: "peligroso", emoji: "💊" }
+        ];
+
+        let m1Timer = null;
+        let m1Score = 0;
+        let m1TimeLeft = 30;
+        let m1CurrentItem = null;
+
+        function startMinigame1() {
+            m1Score = 0;
+            m1TimeLeft = 30;
+            document.getElementById('m1Score').innerText = m1Score;
+            document.getElementById('m1Time').innerText = m1TimeLeft;
+
+            document.getElementById('m1StartPrompt').classList.add('hidden');
+            document.getElementById('m1PlayArea').classList.remove('hidden');
+            document.getElementById('m1PlayArea').classList.add('flex');
+
+            nextM1Item();
+
+            clearInterval(m1Timer);
+            m1Timer = setInterval(() => {
+                m1TimeLeft--;
+                document.getElementById('m1Time').innerText = m1TimeLeft;
+                if (m1TimeLeft <= 0) {
+                    clearInterval(m1Timer);
+                    finishM1();
+                }
+            }, 1000);
+        }
+
+        function nextM1Item() {
+            const rand = m1Items[Math.floor(Math.random() * m1Items.length)];
+            m1CurrentItem = rand;
+            document.getElementById('m1ItemEmoji').innerText = rand.emoji;
+            document.getElementById('m1ItemName').innerText = rand.name;
+        }
+
+        function checkM1Choice(category) {
+            if (!m1CurrentItem) return;
+
+            if (category === m1CurrentItem.category) {
+                m1Score += 10;
+                document.getElementById('m1Score').innerText = m1Score;
+            } else {
+                m1Score = Math.max(0, m1Score - 5);
+                document.getElementById('m1Score').innerText = m1Score;
+            }
+            nextM1Item();
+        }
+
+        function finishM1() {
+            document.getElementById('m1PlayArea').classList.add('hidden');
+            document.getElementById('m1StartPrompt').classList.remove('hidden');
+
+            const earnedLatas = Math.floor(m1Score * 1.5);
+            const earnedXp = m1Score * 2;
+            addLatas(earnedLatas);
+            addXP(earnedXp);
+            if (m1Score >= 50) addCrown();
+
+            showNotification(`⏱️ ¡Tiempo agotado!\nPuntaje total: ${m1Score} pts.\n¡Ganaste +${earnedLatas} Latas Rotas y +${earnedXp} XP!`);
+        }
+
+        // MINIJUEGO 2: LIMPIEZA URBANA CONTRA LA CRISIS DE BASURA
+        let m2WasteLevel = 20;
+        let m2GameInterval = null;
+        let m2IsPlaying = false;
+
+        function startMinigame2() {
+            m2WasteLevel = 20;
+            m2IsPlaying = true;
+            updateM2Bar();
+
+            document.getElementById('m2StartPrompt').classList.add('hidden');
+            document.getElementById('m2Board').classList.remove('hidden');
+            document.getElementById('m2Board').innerHTML = '';
+
+            clearInterval(m2GameInterval);
+            m2GameInterval = setInterval(() => {
+                if (!m2IsPlaying) return;
+                
+                // Increase waste level automatically
+                m2WasteLevel += 3;
+                updateM2Bar();
+
+                // Spawn trash icon randomly
+                spawnTrashInM2();
+
+                if (m2WasteLevel >= 100) {
+                    endM2(false);
+                }
+            }, 800);
+        }
+
+        function spawnTrashInM2() {
+            const board = document.getElementById('m2Board');
+            const trash = document.createElement('div');
+            
+            const icons = ['fa-dumpster', 'fa-box-tissue', 'fa-bottle-water', 'fa-bag-shopping', 'fa-can-food'];
+            const randomIcon = icons[Math.floor(Math.random() * icons.length)];
+            
+            trash.className = `absolute text-3xl sm:text-4xl text-amber-800 dark:text-amber-500 cursor-pointer transition transform hover:scale-125 animate-glow p-2`;
+            trash.innerHTML = `<i class="fa-solid ${randomIcon}"></i>`;
+            
+            // Random positioning on grid
+            const top = Math.floor(Math.random() * 75) + 5;
+            const left = Math.floor(Math.random() * 85) + 5;
+            trash.style.top = top + '%';
+            trash.style.left = left + '%';
+
+            trash.onclick = function() {
+                m2WasteLevel = Math.max(0, m2WasteLevel - 6);
+                updateM2Bar();
+                addLatas(3);
+                trash.remove();
+
+                if (m2WasteLevel <= 0) {
+                    endM2(true);
+                }
+            };
+
+            board.appendChild(trash);
+
+            // Remove automatically if too many items accumulated
+            if (board.children.length > 12) {
+                board.removeChild(board.firstChild);
+            }
+        }
+
+        function updateM2Bar() {
+            const bar = document.getElementById('m2Bar');
+            const text = document.getElementById('m2Percent');
+            bar.style.width = m2WasteLevel + '%';
+            text.innerText = m2WasteLevel + '%';
+
+            if (m2WasteLevel > 70) {
+                bar.className = 'bg-red-600 h-full transition-all duration-200';
+            } else if (m2WasteLevel > 40) {
+                bar.className = 'bg-amber-500 h-full transition-all duration-200';
+            } else {
+                bar.className = 'bg-emerald-500 h-full transition-all duration-200';
+            }
+        }
+
+        function endM2(won) {
+            m2IsPlaying = false;
+            clearInterval(m2GameInterval);
+            document.getElementById('m2Board').classList.add('hidden');
+            document.getElementById('m2StartPrompt').classList.remove('hidden');
+
+            if (won) {
+                addCrown();
+                addXP(150);
+                addLatas(80);
+                showNotification(`🏆 ¡CIUDAD LIMPIA! Has erradicado la acumulación de basura.\nRecompensa: +1 Corona 👑, +80 Latas y +150 XP.`);
+            } else {
+                showNotification(`☣️ ¡Crisis Ambiental! La acumulación de basura superó el 100%. Limpia más rápido la próxima vez.`);
+            }
+        }
+
+
+        /* -------------------------------------------------------------
+           7. CAPÍTULO 3 LOGIC: GENERADOR DE DOCUMENTOS Y OFICIOS
+        ------------------------------------------------------------- */
+        function generateDoc() {
+            const type = document.getElementById('docType').value;
+            const entity = document.getElementById('docEntity').value || '[Municipalidad / Autoridad Competente]';
+            const user = document.getElementById('docUser').value || '[Nombre del Solicitante]';
+            const dni = document.getElementById('docDni').value || '[Número de DNI]';
+            const address = document.getElementById('docAddress').value || '[Dirección o Punto Afectado]';
+            const details = document.getElementById('docDetails').value || '[Descripción detallada de la situación ambiental u homologada]';
+
+            const dateStr = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            let title = "SOLICITUD FORMAL DE ATENCIÓN Y LIMPIEZA PUBLICA";
+            if (type === 'derecho') title = "DENUNCIA Y PETICIÓN DE AMPARO DE DERECHOS VECINALES";
+            if (type === 'mantenimiento') title = "SOLICITUD DE MANTENIMIENTO URBANO Y ÁREAS VERDES";
+            if (type === 'fiscalia') title = "ALERTA PREVENTIVA AMBIENTAL ANTE FISCALÍA / MUNICIPALIDAD";
+
+            const template = 
+`${title}
+Fecha de Emisión: ${dateStr}
+
+A LA AUTORIDAD COMPETENTE:
+${entity.toUpperCase()}
+
+YO, ${user.toUpperCase()}, identificado(a) con DNI N° ${dni}, con domicilio y residencia en ${address}, me dirijo respetuosamente ante su despacho para exposter lo siguiente:
+
+I. FUNDAMENTOS DE HECHO:
+1. Que, en la zona de ${address}, se viene registrando la siguiente problemática que afecta la convivencia y el bien común:
+"${details}"
+
+2. Esta situación vulnera el derecho de la comunidad a gozar de un ambiente sano, equilibrado y libre de focos infecciosos de acumulación de basura o negligencia de servicios públicos.
+
+II. PETITORIO FORMAL:
+Por tanto, solicito a su despacho disponer a la brevedad posible la inspección técnica, limpieza e intervención de los organismos de fiscalización correspondientes en beneficio del sector afectado.
+
+Atentamente,
+
+___________________________________
+FIRMA CIUDADANA: ${user}
+DNI: ${dni}`;
+
+            document.getElementById('docPreviewBox').innerText = template;
+
+            // Give in-game rewards
+            addCrown();
+            addXP(150);
+            addLatas(100);
+            showNotification('📄 ¡Expediente Oficial Generado!\nSe te ha premiado con +1 Corona 👑, +100 Latas Rotas y +150 XP por ejercer tu ciudadanía profesional.');
+        }
+
+        function copyDocument() {
+            const text = document.getElementById('docPreviewBox').innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert('¡Texto del documento copiado al portapapeles!');
+        }
+
+
+        /* -------------------------------------------------------------
+           8. JOURNEY: MAPA DE 100 NIVELES Y RECOMPENSAS
+        ------------------------------------------------------------- */
+        function renderLevelGrid() {
+            const grid = document.getElementById('levelsGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            for (let i = 1; i <= 100; i++) {
+                const isUnlocked = i <= gameState.level;
+                const isCurrent = i === gameState.level;
+
+                const item = document.createElement('div');
+                item.className = `p-3 rounded-xl border text-center flex flex-col items-center justify-center transition cursor-pointer ${
+                    isCurrent 
+                        ? 'bg-green-500 text-white font-bold border-green-600 shadow-md ring-2 ring-green-400 scale-105' 
+                        : isUnlocked 
+                        ? 'bg-green-100 dark:bg-green-950/40 text-green-800 dark:text-green-300 border-green-300 dark:border-green-800' 
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700 opacity-60'
+                }`;
+
+                item.onclick = () => {
+                    showNotification(`Level ${i}: ${isUnlocked ? '¡Nivel Alcanzado!' : 'Bloqueado. Alcanza este nivel ganando XP en minijuegos y trámites.'}\nRecompensa: +${i * 10} Latas Rotas`);
+                };
+
+                item.innerHTML = `
+                    <span class="text-[10px] uppercase font-semibold">Nivel</span>
+                    <span class="text-base font-extrabold">${i}</span>
+                    <i class="fa-solid ${isUnlocked ? (isCurrent ? 'fa-star text-yellow-300' : 'fa-check text-green-600') : 'fa-lock text-gray-400'} text-xs mt-1"></i>
+                `;
+
+                grid.appendChild(item);
+            }
+        }
+    </script>
+</body>
+</html>
